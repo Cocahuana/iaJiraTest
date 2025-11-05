@@ -1,3 +1,5 @@
+'use client';
+
 import { Layout } from "../../components/Layout";
 import { KpiCard } from "../../components/KpiCard";
 import { ChatPrompt } from "../../components/ChatPrompt";

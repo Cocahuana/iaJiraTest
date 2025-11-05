@@ -14,11 +14,25 @@ const JIRA_DOMAIN = process.env.JIRA_DOMAIN;
 const JIRA_USER = process.env.JIRA_USER;
 const JIRA_TOKEN = process.env.JIRA_TOKEN;
 
+// Import routes
 // const jiraRoutes = require("./routes/jira_routes.js");
 const azureRoutes = require("./routes/azure_routes.js");
+const vacationRoutes = require("./routes/vacation_routes.js");
+const sprintRoutes = require("./routes/sprint_routes.js");
+const budgetRoutes = require("./routes/budget_routes.js");
+const timeentryRoutes = require("./routes/timeentry_routes.js");
+const notificationRoutes = require("./routes/notification_routes.js");
+const burnoutRoutes = require("./routes/burnout_routes.js");
 
+// Use routes
 // app.use("/api/jira", jiraRoutes);
 app.use("/api/azure", azureRoutes);
+app.use("/api/vacations", vacationRoutes);
+app.use("/api/sprints", sprintRoutes);
+app.use("/api/budget", budgetRoutes);
+app.use("/api/timeentries", timeentryRoutes);
+app.use("/api/notifications", notificationRoutes);
+app.use("/api/burnout", burnoutRoutes);
 const openai = new OpenAI({
 	apiKey: process.env.OPENAI_API_KEY,
 });
@@ -230,7 +244,65 @@ async function updateJiraPriority(issueKey, priority) {
 		}
 	);
 }
+// ====================== //
+// 📆 CRON DE RESÚMENES AI Y RECORDATORIOS //
+// ====================== //
+const cron = require("node-cron");
+const { generateSummary } = require("./services/openaiSummaryService");
+const reminderService = require("./services/reminderService");
 
+// Simulación: logs o reportes diarios (podés reemplazarlo con datos reales de tu DB o Azure)
+async function getDailyProjectLogs() {
+	return [
+		{
+			title: "Sprint 25 - Análisis de desempeño",
+			logs: [
+				"El proyecto ABC incrementó el costo un 12% respecto al presupuesto.",
+				"El usuario Juan Pérez no registró horas esta semana.",
+				"El burnout del equipo de desarrollo aumentó un 8%.",
+				"Las tareas críticas SCRUM-134 y SCRUM-141 siguen abiertas.",
+			],
+		},
+		{
+			title: "Proyecto XYZ - Seguimiento semanal",
+			logs: [
+				"El sprint se cerró con 94% de cumplimiento.",
+				"Se detectaron tareas duplicadas en backlog.",
+				"Costos dentro de lo esperado, sin alertas.",
+			],
+		},
+	];
+}
+
+// Ejecuta cada día a las 08:00 AM - Resúmenes AI
+cron.schedule("0 8 * * *", async () => {
+	console.log("🕗 Generando resúmenes automáticos de proyectos...");
+
+	const reports = await getDailyProjectLogs();
+	for (const report of reports) {
+		const resumen = await generateSummary(report.title, report.logs);
+		console.log(`🧠 ${report.title}:\n${resumen}\n`);
+		// ⚙️ Próximamente: guardar en DB o enviar por email/Teams
+	}
+});
+
+// Ejecuta cada día a las 09:00 AM - Recordatorios y alertas
+cron.schedule("0 9 * * *", async () => {
+	console.log("🔔 Ejecutando verificación de recordatorios y alertas...");
+	await reminderService.runAllChecks();
+});
+
+// Ejecuta cada hora - Verificación de burnout crítico
+cron.schedule("0 * * * *", async () => {
+	console.log("🔥 Verificando alertas de burnout crítico...");
+	await reminderService.checkBurnoutAlerts();
+});
+
+// Ejecuta cada día a las 18:00 - Verificación de time entries
+cron.schedule("0 18 * * *", async () => {
+	console.log("⏰ Verificando time entries faltantes...");
+	await reminderService.checkMissingTimeEntries();
+});
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
 	console.log(`Servidor corriendo en http://localhost:${PORT}`);

@@ -1,10 +1,21 @@
 {
-  "dependencies": {
-    "axios": "^1.11.0",
-    "cors": "^2.8.5",
-    "dotenv": "^17.2.0",
-    "express": "^5.1.0",
-    "jira.js": "^5.2.2",
-    "openai": "^5.10.2"
-  }
+	"dependencies": {
+		"axios": "^1.11.0",
+		"cors": "^2.8.5",
+		"dotenv": "^17.2.0",
+		"express": "^5.1.0",
+		"jira.js": "^5.2.2",
+		"node-cron": "^4.2.1",
+		"nodemailer": "^6.9.7",
+		"openai": "^5.10.2",
+		"pg": "^8.16.3",
+		"sequelize": "^6.37.7"
+	},
+	"scripts": {
+		"dev": "node server.js",
+		"start": "node server.js",
+		"db:sync": "node scripts/syncDatabase.js",
+		"summarize:daily": "node scripts/summarizer.js --mode=daily",
+		"summarize:sprint": "node scripts/summarizer.js --mode=sprint"
+	}
 }

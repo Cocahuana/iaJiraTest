@@ -19,6 +19,13 @@ import {
 	Settings,
 	Home,
 	BarChart3,
+	Calendar,
+	DollarSign,
+	Clock,
+	Bell,
+	ListTodo,
+	Briefcase,
+	Users,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -29,6 +36,7 @@ export function SidebarNav({ user }: { user?: any }) {
 
 	const mainNav = [
 		{ title: "Organization", icon: LayoutDashboard, href: "/" },
+		{ title: "PM Dashboard", icon: Briefcase, href: "/pm-dashboard" },
 		{
 			title: "Projects",
 			icon: TrendingUp,
@@ -39,6 +47,12 @@ export function SidebarNav({ user }: { user?: any }) {
 				{ title: "Graphs", href: "/projects/graphs" },
 			],
 		},
+		{ title: "Users", icon: Users, href: "/users" },
+		{ title: "Budget", icon: DollarSign, href: "/budget" },
+		{ title: "Vacations", icon: Calendar, href: "/vacations" },
+		{ title: "Time Tracking", icon: Clock, href: "/timetracking" },
+		{ title: "Task Status", icon: ListTodo, href: "/task-status" },
+		{ title: "Notifications", icon: Bell, href: "/notifications" },
 		{ title: "Prompts", icon: Compass, href: "/prompts" },
 		{ title: "Graph", icon: Star, href: "/graph" },
 		{ title: "Settings", icon: Settings, href: "/settings" },
