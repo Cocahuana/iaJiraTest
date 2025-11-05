@@ -31,22 +31,61 @@ async function getAzureTasks() {
 
 	// guardar o actualizar en DB
 	for (const item of details.data.value) {
-		await Task.upsert({
-			id: item.id,
-			title: item.fields["System.Title"],
-			state: item.fields["System.State"],
-			project_id: null, // asignar después con syncProject o lookup
-			assignee_id: null, // si tenés un mapeo entre azure y tus usuarios
-		});
+		await Task.upsert(
+			{
+				azure_id: item.id,
+				title: item.fields["System.Title"],
+				status: item.fields["System.State"] || "New",
+				priority: item.fields["Microsoft.VSTS.Common.Priority"] || null,
+				description: item.fields["System.Description"] || null,
+				project_id: null, // asignar después con syncProject o lookup
+				assignee_id: null, // si tenés un mapeo entre azure y tus usuarios
+			},
+			{
+				conflictFields: ["azure_id"],
+			}
+		);
 	}
 
-	return details.data.value.map((item) => ({
-		id: item.id,
-		title: item.fields["System.Title"],
-		state: item.fields["System.State"],
-		assignedTo:
-			item.fields["System.AssignedTo"]?.displayName || "Sin asignar",
-	}));
+	// Get saved tasks from database with proper structure
+	const savedTasks = await Task.findAll({
+		where: {
+			azure_id: ids,
+		},
+		include: [
+			{
+				model: User,
+				attributes: ["id", "name", "email"],
+				required: false,
+			},
+			{
+				model: Project,
+				attributes: ["id", "name"],
+				required: false,
+			},
+		],
+	});
+
+	// Return tasks with both Azure data and database relationships
+	return details.data.value.map((item) => {
+		const dbTask = savedTasks.find((t) => t.azure_id === item.id);
+		
+		return {
+			id: item.id,
+			azure_id: item.id,
+			title: item.fields["System.Title"],
+			status: item.fields["System.State"], // Use 'status' not 'state'
+			state: item.fields["System.State"], // Keep for compatibility
+			priority: item.fields["Microsoft.VSTS.Common.Priority"] || null,
+			description: item.fields["System.Description"] || null,
+			assignedTo: item.fields["System.AssignedTo"]?.displayName || "Unassigned",
+			assignee_id: dbTask?.assignee_id || null,
+			User: dbTask?.User || null,
+			project_id: dbTask?.project_id || null,
+			Project: dbTask?.Project || null,
+			due_date: dbTask?.due_date || null,
+		};
+	});
 }
 
 module.exports = {

@@ -26,6 +26,7 @@ import {
 	ListTodo,
 	Briefcase,
 	Users,
+	Zap,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -48,6 +49,7 @@ export function SidebarNav({ user }: { user?: any }) {
 			],
 		},
 		{ title: "Users", icon: Users, href: "/users" },
+		{ title: "Sprints", icon: Zap, href: "/sprints" },
 		{ title: "Budget", icon: DollarSign, href: "/budget" },
 		{ title: "Vacations", icon: Calendar, href: "/vacations" },
 		{ title: "Time Tracking", icon: Clock, href: "/timetracking" },

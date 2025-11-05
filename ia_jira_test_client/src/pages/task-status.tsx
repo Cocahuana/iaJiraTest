@@ -95,11 +95,15 @@ export default function TaskStatusPage() {
 			in_progress: { variant: "default", label: "In Progress" },
 			completed: { variant: "success", label: "Completed" },
 			blocked: { variant: "destructive", label: "Blocked" },
+			new: { variant: "secondary", label: "New" },
+			active: { variant: "default", label: "Active" },
+			resolved: { variant: "success", label: "Resolved" },
+			closed: { variant: "success", label: "Closed" },
 		};
 
-		const statusInfo = statusMap[status.toLowerCase()] || {
+		const statusInfo = statusMap[status?.toLowerCase()] || {
 			variant: "outline",
-			label: status,
+			label: status || "Unknown",
 		};
 
 		return <Badge variant={statusInfo.variant as any}>{statusInfo.label}</Badge>;
@@ -193,7 +197,7 @@ export default function TaskStatusPage() {
 								<p className="text-2xl font-bold text-yellow-500">
 									{
 										tasks.filter(
-											(t) => t.status?.toLowerCase() === "in_progress"
+											(t) => t.state?.toLowerCase() === "in_progress"
 										).length
 									}
 								</p>
@@ -311,6 +315,12 @@ export default function TaskStatusPage() {
 									const assignee = users.find(
 										(u) => u.id === task.assignee_id
 									);
+									
+									// Use Azure assignedTo if available, otherwise lookup from users
+									const assigneeName = task.assignedTo || 
+										task.User?.name || 
+										assignee?.name || 
+										"Unassigned";
 
 									return (
 										<TableRow
@@ -333,7 +343,7 @@ export default function TaskStatusPage() {
 											</TableCell>
 											<TableCell>
 												<div className="flex items-center gap-2">
-													{assignee?.name || "Unassigned"}
+													{assigneeName}
 													{assigneeOnVacation && (
 														<Badge variant="warning" className="text-xs">
 															On Vacation
@@ -342,7 +352,7 @@ export default function TaskStatusPage() {
 												</div>
 											</TableCell>
 											<TableCell>
-												{getStatusBadge(task.status)}
+												{getStatusBadge(task.state)}
 											</TableCell>
 											<TableCell>
 												{getPriorityBadge(task.priority)}
