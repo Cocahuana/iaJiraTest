@@ -1,5 +1,5 @@
 // controllers/budget_controller.js
-const { SprintCost, Sprint, User, Project } = require("../db.js");
+const { SprintCost, Sprint, User, Project, Budget } = require("../db.js");
 const { Op } = require("sequelize");
 const { OpenAI } = require("openai");
 
@@ -366,7 +366,237 @@ Responde en formato JSON con las claves: analysis, main_causes, top_overspender,
 	}
 }
 
+// ==================== BUDGET MANAGEMENT ====================
+
+// Get all budgets
+async function getAllBudgets(req, res) {
+	try {
+		const budgets = await Budget.findAll({
+			include: [
+				{
+					model: Project,
+					attributes: ["id", "name", "description"],
+				},
+			],
+			order: [["createdAt", "DESC"]],
+		});
+
+		res.json({ success: true, budgets });
+	} catch (error) {
+		console.error("Error fetching budgets:", error);
+		res.status(500).json({ success: false, error: error.message });
+	}
+}
+
+// Get budgets by project
+async function getBudgetsByProject(req, res) {
+	try {
+		const { projectId } = req.params;
+
+		const budgets = await Budget.findAll({
+			where: { project_id: projectId },
+			include: [
+				{
+					model: Project,
+					attributes: ["id", "name", "description"],
+				},
+			],
+			order: [["createdAt", "DESC"]],
+		});
+
+		res.json({ success: true, budgets });
+	} catch (error) {
+		console.error("Error fetching project budgets:", error);
+		res.status(500).json({ success: false, error: error.message });
+	}
+}
+
+// Get single budget by ID
+async function getBudgetById(req, res) {
+	try {
+		const { id } = req.params;
+
+		const budget = await Budget.findByPk(id, {
+			include: [
+				{
+					model: Project,
+					attributes: ["id", "name", "description"],
+				},
+			],
+		});
+
+		if (!budget) {
+			return res
+				.status(404)
+				.json({ success: false, error: "Budget not found" });
+		}
+
+		// Get personnel details if there are any
+		if (budget.personnel_list && budget.personnel_list.length > 0) {
+			const personnelIds = budget.personnel_list.map((p) => p.userId);
+			const users = await User.findAll({
+				where: { id: personnelIds },
+				attributes: ["id", "name", "email", "role"],
+			});
+
+			// Enrich personnel list with user details
+			const enrichedPersonnel = budget.personnel_list.map((p) => {
+				const user = users.find((u) => u.id === p.userId);
+				return {
+					...p,
+					user: user || null,
+				};
+			});
+
+			budget.dataValues.enrichedPersonnel = enrichedPersonnel;
+		}
+
+		res.json({ success: true, budget });
+	} catch (error) {
+		console.error("Error fetching budget:", error);
+		res.status(500).json({ success: false, error: error.message });
+	}
+}
+
+// Create new budget
+async function createBudget(req, res) {
+	try {
+		const {
+			project_id,
+			name,
+			initial_budget,
+			initial_investment,
+			expected_roi,
+			needed_personnel,
+			personnel_budget,
+			personnel_list,
+			description,
+			start_date,
+			end_date,
+		} = req.body;
+
+		// Validation
+		if (!project_id || !name || !initial_budget) {
+			return res.status(400).json({
+				success: false,
+				error: "project_id, name, and initial_budget are required",
+			});
+		}
+
+		// Check if project exists
+		const project = await Project.findByPk(project_id);
+		if (!project) {
+			return res
+				.status(404)
+				.json({ success: false, error: "Project not found" });
+		}
+
+		const budget = await Budget.create({
+			project_id,
+			name,
+			initial_budget,
+			initial_investment: initial_investment || 0,
+			expected_roi: expected_roi || 0,
+			needed_personnel: needed_personnel || 0,
+			personnel_budget: personnel_budget || 0,
+			personnel_list: personnel_list || [],
+			description,
+			start_date,
+			end_date,
+			status: "active",
+		});
+
+		const budgetWithDetails = await Budget.findByPk(budget.id, {
+			include: [
+				{
+					model: Project,
+					attributes: ["id", "name", "description"],
+				},
+			],
+		});
+
+		res.status(201).json({ success: true, budget: budgetWithDetails });
+	} catch (error) {
+		console.error("Error creating budget:", error);
+		res.status(500).json({ success: false, error: error.message });
+	}
+}
+
+// Update budget
+async function updateBudget(req, res) {
+	try {
+		const { id } = req.params;
+		const updates = req.body;
+
+		const budget = await Budget.findByPk(id);
+		if (!budget) {
+			return res
+				.status(404)
+				.json({ success: false, error: "Budget not found" });
+		}
+
+		// Update allowed fields
+		const allowedFields = [
+			"name",
+			"initial_budget",
+			"initial_investment",
+			"expected_roi",
+			"needed_personnel",
+			"personnel_budget",
+			"personnel_list",
+			"description",
+			"start_date",
+			"end_date",
+			"status",
+		];
+
+		Object.keys(updates).forEach((key) => {
+			if (allowedFields.includes(key)) {
+				budget[key] = updates[key];
+			}
+		});
+
+		await budget.save();
+
+		const updatedBudget = await Budget.findByPk(id, {
+			include: [
+				{
+					model: Project,
+					attributes: ["id", "name", "description"],
+				},
+			],
+		});
+
+		res.json({ success: true, budget: updatedBudget });
+	} catch (error) {
+		console.error("Error updating budget:", error);
+		res.status(500).json({ success: false, error: error.message });
+	}
+}
+
+// Delete budget
+async function deleteBudget(req, res) {
+	try {
+		const { id } = req.params;
+
+		const budget = await Budget.findByPk(id);
+		if (!budget) {
+			return res
+				.status(404)
+				.json({ success: false, error: "Budget not found" });
+		}
+
+		await budget.destroy();
+
+		res.json({ success: true, message: "Budget deleted successfully" });
+	} catch (error) {
+		console.error("Error deleting budget:", error);
+		res.status(500).json({ success: false, error: error.message });
+	}
+}
+
 module.exports = {
+	// Sprint Cost functions
 	getAllSprintCosts,
 	getSprintCostsBySprint,
 	getBudgetOverruns,
@@ -374,5 +604,12 @@ module.exports = {
 	createSprintCost,
 	updateSprintCost,
 	analyzeBudgetOverrun,
+	// Budget functions
+	getAllBudgets,
+	getBudgetsByProject,
+	getBudgetById,
+	createBudget,
+	updateBudget,
+	deleteBudget,
 };
 

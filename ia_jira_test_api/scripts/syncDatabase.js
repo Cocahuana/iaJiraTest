@@ -30,6 +30,7 @@ async function syncDatabase() {
 		console.log("   - Tasks");
 		console.log("   - AiQueries");
 		console.log("   - Financials");
+		console.log("   - Budgets");
 		console.log("   - Vacations");
 		console.log("   - Sprints");
 		console.log("   - SprintCosts");

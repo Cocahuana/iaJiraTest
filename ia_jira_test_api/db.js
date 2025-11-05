@@ -76,6 +76,7 @@ const {
 	TimeEntry,
 	Notification,
 	BurnoutMetric,
+	Budget,
 } = sequelize.models;
 
 // Relaciones existentes
@@ -102,6 +103,10 @@ AiQuery.belongsTo(User, { foreignKey: "user_id" });
 
 Project.hasOne(Financial, { foreignKey: "project_id" });
 Financial.belongsTo(Project, { foreignKey: "project_id" });
+
+// Budgets
+Project.hasMany(Budget, { foreignKey: "project_id" });
+Budget.belongsTo(Project, { foreignKey: "project_id" });
 
 // Nuevas relaciones
 // Vacations

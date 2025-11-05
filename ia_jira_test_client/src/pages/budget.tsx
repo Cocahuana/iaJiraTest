@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/router";
 import { Layout } from "@/components/Layout";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -28,17 +29,22 @@ import {
 	AlertTriangle,
 	CheckCircle,
 	BarChart3,
+	Plus,
+	Eye,
+	FileText,
 } from "lucide-react";
 import axios from "axios";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
 export default function BudgetPage() {
+	const router = useRouter();
 	const [loading, setLoading] = useState(true);
 	const [projects, setProjects] = useState<any[]>([]);
 	const [selectedProject, setSelectedProject] = useState<string>("all");
 	const [allCosts, setAllCosts] = useState<any[]>([]);
 	const [overruns, setOverruns] = useState<any[]>([]);
+	const [budgets, setBudgets] = useState<any[]>([]);
 	const [aiAnalysis, setAiAnalysis] = useState<any>(null);
 	const [analyzingSprintId, setAnalyzingSprintId] = useState<string | null>(
 		null
@@ -48,10 +54,18 @@ export default function BudgetPage() {
 		fetchData();
 	}, []);
 
+	useEffect(() => {
+		if (selectedProject !== "all") {
+			fetchBudgetsByProject(selectedProject);
+		} else {
+			fetchAllBudgets();
+		}
+	}, [selectedProject]);
+
 	const fetchData = async () => {
 		try {
 			setLoading(true);
-			const [projectsRes, costsRes, overrunsRes] = await Promise.all([
+			const [projectsRes, costsRes, overrunsRes, budgetsRes] = await Promise.all([
 				axios.get(`${API_URL}/api/azure/projects/sync`).catch(err => {
 					console.error("Error fetching projects:", err?.response?.data || err.message);
 					return { data: { projects: [] } };
@@ -64,15 +78,44 @@ export default function BudgetPage() {
 					console.error("Error fetching overruns:", err?.response?.data || err.message);
 					return { data: { overruns: [] } };
 				}),
+				axios.get(`${API_URL}/api/budget/budgets`).catch(err => {
+					console.error("Error fetching budgets:", err?.response?.data || err.message);
+					return { data: { budgets: [] } };
+				}),
 			]);
 
 			setProjects(projectsRes.data.projects || []);
 			setAllCosts(costsRes.data.costs || []);
 			setOverruns(overrunsRes.data.overruns || []);
+			setBudgets(budgetsRes.data.budgets || []);
 		} catch (error: any) {
 			console.error("Error fetching data:", error?.response?.data || error.message);
 		} finally {
 			setLoading(false);
+		}
+	};
+
+	const fetchAllBudgets = async () => {
+		try {
+			const res = await axios.get(`${API_URL}/api/budget/budgets`).catch(err => {
+				console.error("Error fetching budgets:", err?.response?.data || err.message);
+				return { data: { budgets: [] } };
+			});
+			setBudgets(res.data.budgets || []);
+		} catch (error: any) {
+			console.error("Error fetching budgets:", error?.response?.data || error.message);
+		}
+	};
+
+	const fetchBudgetsByProject = async (projectId: string) => {
+		try {
+			const res = await axios.get(`${API_URL}/api/budget/budgets/project/${projectId}`).catch(err => {
+				console.error("Error fetching project budgets:", err?.response?.data || err.message);
+				return { data: { budgets: [] } };
+			});
+			setBudgets(res.data.budgets || []);
+		} catch (error: any) {
+			console.error("Error fetching project budgets:", error?.response?.data || error.message);
 		}
 	};
 
@@ -206,8 +249,9 @@ export default function BudgetPage() {
 					</Card>
 				</div>
 
-				{/* Project Filter */}
-				<Card className="p-4">
+			{/* Project Filter */}
+			<Card className="p-4">
+				<div className="flex items-center justify-between">
 					<div className="flex items-center gap-4">
 						<p className="text-sm font-medium">Filter by Project:</p>
 						<Select
@@ -227,16 +271,128 @@ export default function BudgetPage() {
 							</SelectContent>
 						</Select>
 					</div>
-				</Card>
+					{selectedProject !== "all" && (
+						<Button 
+							onClick={() => router.push(`/budget/create?projectId=${selectedProject}`)}
+						>
+							<Plus className="h-4 w-4 mr-2" />
+							Create Budget
+						</Button>
+					)}
+				</div>
+			</Card>
 
-				{/* Tabs */}
-				<Tabs defaultValue="overruns" className="space-y-4">
-					<TabsList>
-						<TabsTrigger value="overruns">
-							Budget Overruns ({overruns.length})
-						</TabsTrigger>
-						<TabsTrigger value="all">All Sprint Costs</TabsTrigger>
-					</TabsList>
+			{/* Tabs */}
+			<Tabs defaultValue="budgets" className="space-y-4">
+				<TabsList>
+					<TabsTrigger value="budgets">
+						<FileText className="h-4 w-4 mr-2" />
+						Budgets ({budgets.length})
+					</TabsTrigger>
+					<TabsTrigger value="overruns">
+						<AlertTriangle className="h-4 w-4 mr-2" />
+						Budget Overruns ({overruns.length})
+					</TabsTrigger>
+					<TabsTrigger value="all">
+						<BarChart3 className="h-4 w-4 mr-2" />
+						All Sprint Costs
+					</TabsTrigger>
+				</TabsList>
+
+				{/* Budgets Tab */}
+				<TabsContent value="budgets" className="space-y-4">
+					{budgets.length === 0 ? (
+						<Card className="p-12 text-center">
+							<FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+							<h3 className="text-lg font-semibold mb-2">
+								No Budgets Created Yet
+							</h3>
+							<p className="text-muted-foreground mb-4">
+								Create your first budget by selecting a project above.
+							</p>
+							{selectedProject !== "all" && (
+								<Button 
+									onClick={() => router.push(`/budget/create?projectId=${selectedProject}`)}
+								>
+									<Plus className="h-4 w-4 mr-2" />
+									Create First Budget
+								</Button>
+							)}
+						</Card>
+					) : (
+						<Card>
+							<Table>
+								<TableHeader>
+									<TableRow>
+										<TableHead>Budget Name</TableHead>
+										<TableHead>Project</TableHead>
+										<TableHead>Initial Budget</TableHead>
+										<TableHead>Personnel Budget</TableHead>
+										<TableHead>Expected ROI</TableHead>
+										<TableHead>Status</TableHead>
+										<TableHead>Period</TableHead>
+										<TableHead className="text-right">Actions</TableHead>
+									</TableRow>
+								</TableHeader>
+								<TableBody>
+									{budgets.map((budget) => (
+										<TableRow key={budget.id}>
+											<TableCell className="font-medium">
+												{budget.name}
+											</TableCell>
+											<TableCell>
+												{budget.Project?.name || "N/A"}
+											</TableCell>
+											<TableCell>
+												${parseFloat(budget.initial_budget).toLocaleString()}
+											</TableCell>
+											<TableCell>
+												${parseFloat(budget.personnel_budget).toLocaleString()}
+											</TableCell>
+											<TableCell>
+												<Badge variant="outline" className="bg-green-50 text-green-700">
+													{budget.expected_roi}%
+												</Badge>
+											</TableCell>
+											<TableCell>
+												<Badge
+													className={
+														budget.status === "active"
+															? "bg-green-500"
+															: budget.status === "completed"
+															? "bg-blue-500"
+															: "bg-gray-500"
+													}
+												>
+													{budget.status}
+												</Badge>
+											</TableCell>
+											<TableCell>
+												{budget.start_date && budget.end_date ? (
+													<span className="text-sm">
+														{new Date(budget.start_date).toLocaleDateString()} -{" "}
+														{new Date(budget.end_date).toLocaleDateString()}
+													</span>
+												) : (
+													<span className="text-sm text-muted-foreground">Not set</span>
+												)}
+											</TableCell>
+											<TableCell className="text-right">
+												<Button
+													size="sm"
+													onClick={() => router.push(`/budget/${budget.id}`)}
+												>
+													<Eye className="h-4 w-4 mr-2" />
+													View Budget
+												</Button>
+											</TableCell>
+										</TableRow>
+									))}
+								</TableBody>
+							</Table>
+						</Card>
+					)}
+				</TabsContent>
 
 					{/* Budget Overruns Tab */}
 					<TabsContent value="overruns" className="space-y-4">
